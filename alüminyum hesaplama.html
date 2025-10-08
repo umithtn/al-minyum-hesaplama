@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alüminyum Profil Kesim Hesaplayıcı</title>
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#22c55e;--danger:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0b1220,#0f172a 40%);color:var(--text)}
+    .container{max-width:980px;margin:32px auto;padding:16px}
+    .title{font-weight:800;letter-spacing:.2px;font-size:28px;margin-bottom:12px}
+    .subtitle{color:var(--muted);margin-bottom:24px}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:860px){.grid{grid-template-columns:1.2fr .8fr}}
+    .card{background:radial-gradient(1200px 300px at 10% -20%,rgba(34,197,94,.15),transparent),linear-gradient(180deg,#0f172a,#0b1220);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .section-title{font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px}
+    label{display:block;font-size:13px;color:#cbd5e1;margin-bottom:6px}
+    input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:var(--text);outline:none}
+    input:focus{border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px}
+    .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+    button{appearance:none;border:none;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--accent);color:#052e16}
+    .ghost{background:rgba(148,163,184,.12);color:var(--text)}
+    .danger{background:var(--danger);color:#fff}
+    .results{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .stat{background:linear-gradient(180deg,#0f172a,#0b1220);border:1px solid rgba(148,163,184,.18);padding:16px;border-radius:14px}
+    .stat .k{font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:.12em}
+    .stat .v{font-size:22px;font-weight:800;margin-top:6px}
+    .muted{color:var(--muted)}
+    .table{margin-top:14px;border-collapse:collapse;width:100%;font-size:14px}
+    .table th,.table td{border-bottom:1px dashed rgba(148,163,184,.2);padding:10px}
+    .table th{color:#a3b0c2;text-align:left;font-weight:700}
+    .emph{color:#bbf7d0}
+    .footer{margin-top:22px;color:#9ca3af;font-size:12px}
+    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.35);font-weight:700;font-size:12px}
+    .tests{margin-top:16px;padding:12px;border:1px dashed rgba(148,163,184,.35);border-radius:12px}
+    pre{white-space:pre-wrap;background:#0b1220;border:1px solid rgba(148,163,184,.2);padding:10px;border-radius:10px;max-height:220px;overflow:auto}
+  </style>
+
+  <!-- PWA: manifest + service worker (ikonlar dinamik) -->
+  <script>
+    (function(){
+      function makeIcon(size){
+        const c=document.createElement('canvas'); c.width=c.height=size; const ctx=c.getContext('2d');
+        const g=ctx.createLinearGradient(0,0,size,size); g.addColorStop(0,'#16a34a'); g.addColorStop(1,'#065f46');
+        ctx.fillStyle=g; ctx.fillRect(0,0,size,size);
+        ctx.fillStyle='#e5e7eb'; ctx.font=Math.floor(size*0.38)+'px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('ALU', size/2, size/2+size*0.04);
+        return c.toDataURL('image/png');
+      }
+      const icon192 = makeIcon(192);
+      const icon512 = makeIcon(512);
+      const apple180 = makeIcon(180);
+      const linkApple = document.createElement('link'); linkApple.rel='apple-touch-icon'; linkApple.href=apple180; document.head.appendChild(linkApple);
+
+      const manifest = {
+        name: 'Alüminyum Profil Kesim Hesaplayıcı',
+        short_name: 'Kesim Hesap',
+        display: 'standalone',
+        background_color: '#0f172a',
+        theme_color: '#0f172a',
+        icons: [
+          {src: icon192, sizes: '192x192', type: 'image/png'},
+          {src: icon512, sizes: '512x512', type: 'image/png'}
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+      const murl = URL.createObjectURL(blob);
+      const link = document.createElement('link'); link.rel='manifest'; link.href=murl; document.head.appendChild(link);
+
+      if('serviceWorker' in navigator){
+        const swCode = `
+          const CACHE='alu-calc-v1';
+          self.addEventListener('install',e=>{self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])))});
+          self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});
+          self.addEventListener('fetch',e=>{const req=e.request; e.respondWith(
+            caches.match(req).then(res=> res || fetch(req).then(r=>{const rc=r.clone(); caches.open(CACHE).then(c=>c.put(req,rc)); return r;}).catch(()=>caches.match('./')))
+          )});`;
+        const swBlob = new Blob([swCode], {type:'text/javascript'});
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl);
+      }
+    })();
+  </script>
+
+  <!-- JS ÖNCE YÜKLENİR: calc() ve diğerleri globalde hazır olsun -->
+  <script>
+  (function(){
+    'use strict';
+
+    function parseNum(x){
+      if(typeof x !== 'string') return Number(x)||0;
+      x = x.trim().replace(',', '.');
+      const v = Number(x);
+      return isNaN(v) ? 0 : v;
+    }
+
+    function fmtM(x){ return `${(x).toFixed(3)} m`; }
+
+    function clearOutputs(){
+      const ids=['out_piece','out_pieces','out_ppb','out_bars','out_bars_simple','out_total_simple','out_bars_simple_row','out_packages','out_waste','out_total_piece_len','out_stock','out_cuts'];
+      ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='—'; });
+      const pkgRow=document.getElementById('out_packages_row'); if(pkgRow) pkgRow.textContent='—';
+    }
+
+    function fillExample(total, stock, pm, pcm, kerfMM){
+      document.getElementById('total_m').value = String(total);
+      document.getElementById('stock_m').value = String(stock);
+      document.getElementById('piece_m').value = pm === '' ? '' : String(pm);
+      document.getElementById('piece_cm').value = pcm === '' ? '' : String(pcm);
+      document.getElementById('kerf_mm').value = String(kerfMM);
+      calc();
+    }
+
+    function resetForm(){
+      document.getElementById('total_m').value = '';
+      document.getElementById('stock_m').value = '6';
+      document.getElementById('piece_m').value = '';
+      document.getElementById('piece_cm').value = '';
+      document.getElementById('kerf_mm').value = '0';
+      clearOutputs();
+    }
+
+    function calc(){
+      const total_m = parseNum(document.getElementById('total_m').value);
+      const stock_m = parseNum(document.getElementById('stock_m').value) || 6;
+      const piece_m = parseNum(document.getElementById('piece_m').value);
+      const piece_cm = parseNum(document.getElementById('piece_cm').value);
+      const kerf_mm = parseNum(document.getElementById('kerf_mm').value); // mm
+
+      const L = piece_m + piece_cm/100; // parça uzunluğu (m)
+      const K = kerf_mm/1000;           // kerf (m)
+      const B = stock_m;                // boy uzunluğu (m)
+
+      if(B <= 0 || total_m <= 0){
+        clearOutputs();
+        return;
+      }
+
+      // (Sade) sadece toplam metreyi boy adedine çevir
+      const barsByTotal = Math.ceil(total_m / B);
+
+      if(!(L > 0)){
+        const set = (id, val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
+        set('out_piece','—');
+        set('out_pieces','—');
+        set('out_ppb','—');
+        set('out_bars','—');
+        set('out_packages','—');
+
+        set('out_stock', fmtM(B));
+        set('out_cuts', '—');
+        set('out_total_piece_len', '—');
+        set('out_waste', fmtM(barsByTotal * B - total_m));
+
+        set('out_bars_simple', String(barsByTotal));
+        set('out_total_simple', fmtM(total_m));
+        set('out_bars_simple_row', String(barsByTotal));
+        const pkgRow=document.getElementById('out_packages_row'); if(pkgRow) pkgRow.textContent='—';
+        return;
+      }
+
+      // Gelişmiş: parça + kerf ile hesap
+      const piecesNeeded = Math.ceil(total_m / L);
+
+      let n = Math.floor((B + K) / (L + K));
+      if(n < 1) n = 1;
+      if(L > B){ n = 0; }
+
+      const bars = n > 0 ? Math.ceil(piecesNeeded / n) : Infinity;
+
+      const totalPieceLen = piecesNeeded * L;
+      const totalStockLen = (bars === Infinity ? 0 : bars * B);
+
+      const cuts = piecesNeeded; // varsayım: her parça için 1 kesim
+      const totalKerf = cuts * K;
+
+      let waste = totalStockLen - (totalPieceLen + totalKerf);
+      if(waste < 0) waste = 0;
+
+      // Paket: 32 adet/parça
+      const packages = bars===Infinity ? null : Math.ceil(piecesNeeded / 32);
+
+      const set = (id, val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
+      set('out_piece', fmtM(L));
+      set('out_pieces', isFinite(piecesNeeded)? String(piecesNeeded) : '—');
+      set('out_ppb', n>0? String(n) : 'Sığmaz');
+      set('out_bars', (bars===Infinity? 'Sığmaz' : String(bars)));
+      set('out_packages', packages===null ? '—' : String(packages));
+
+      set('out_stock', fmtM(B));
+      set('out_cuts', isFinite(cuts)? String(cuts) : '—');
+      set('out_total_piece_len', fmtM(totalPieceLen));
+      set('out_waste', (bars===Infinity? '—' : fmtM(waste)));
+
+      const pkgRow=document.getElementById('out_packages_row');
+      if(pkgRow) pkgRow.textContent = packages===null ? '—' : String(packages);
+
+      // Referans için sade dönüşümü de göster
+      set('out_bars_simple', String(barsByTotal));
+      set('out_total_simple', fmtM(total_m));
+      set('out_bars_simple_row', String(barsByTotal));
+    }
+
+    function runTests(){
+      const log = [];
+      function test(total, stock, expected, label){
+        fillExample(total, stock, '', '', 0);
+        const got = document.getElementById('out_bars_simple').textContent.trim();
+        const ok = String(expected) === got;
+        log.push(`${ok ? '✅' : '❌'} ${label}  beklenen=${expected}, çıkan=${got}`);
+      }
+      // VAR OLAN TESTLER (değiştirilmedi)
+      test(1200, 6, 200, '1200 m / 6 m');
+      test(780, 6, 130, '780 m / 6 m');
+      test(12.5, 6, 3, '12.5 m / 6 m (ondalık)');
+      test(12.5, 5, 3, '12.5 m / 5 m (farklı boy)');
+      // EK basit testler
+      test(0.1, 6, 1, '0.1 m / 6 m (min)');
+      test(6, 6, 1, '6 m / 6 m (tam bölünür)');
+
+      // Paket testi (parça: 1.20 m, toplam 200 m → 167 parça → 6 paket)
+      fillExample(200,6,1,20,0);
+      const pkgGot = document.getElementById('out_packages').textContent.trim();
+      log.push(`${pkgGot === '6' ? '✅' : '❌'} Paket hesabı 200 m / 1.20 m  beklenen=6, çıkan=${pkgGot}`);
+
+      document.getElementById('testlog').textContent = log.join('\n');
+    }
+
+    // Fonksiyonları global (window) kapsamına ver → inline onclick ile erişilsin
+    window.calc = calc;
+    window.fillExample = fillExample;
+    window.resetForm = resetForm;
+    window.runTests = runTests;
+
+    // DOM yüklendiğinde ilk hesap
+    window.addEventListener('DOMContentLoaded', calc);
+  })();
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Alüminyum Profil Kesim Hesaplayıcı</div>
+    <div class="subtitle">6 metrelik boylardan, istediğiniz ölçüde parçalar için gerekli <strong>boy adedi</strong>ni, <strong>paket adedi</strong>ni ve <strong>fireyi</strong> hesaplayın. Kerf (kesim payı) <u>mm</u> olarak girilir.</div>
+
+    <div class="grid">
+      <!-- Inputs -->
+      <div class="card">
+        <div class="section-title">Girdiler</div>
+        <div class="row">
+          <div>
+            <label>Toplam istenen uzunluk (metre)</label>
+            <input id="total_m" type="text" placeholder="örn: 2500" value="2500" />
+            <div class="hint">Müşterinin talep ettiği toplam metre. Parça adedi otomatik hesaplanır (yukarı yuvarlanır).</div>
+          </div>
+          <div>
+            <label>Stok <i>boy</i> uzunluğu (metre)</label>
+            <input id="stock_m" type="text" placeholder="örn: 6" value="6" />
+            <div class="hint">Varsayılan 6 m; farklı boy kullanıyorsanız değiştirebilirsiniz.</div>
+          </div>
+        </div>
+        <div class="row-3" style="margin-top:10px">
+          <div>
+            <label>Parça uzunluğu (metre)</label>
+            <input id="piece_m" type="text" placeholder="örn: 1" value="1" />
+          </div>
+          <div>
+            <label>Parça uzunluğu (santimetre)</label>
+            <input id="piece_cm" type="text" placeholder="örn: 20" value="20" />
+          </div>
+          <div>
+            <label>Kesim payı (kerf) (mm)</label>
+            <input id="kerf_mm" type="text" placeholder="örn: 3" value="0" />
+            <div class="hint">Örnek: 3 mm = 0.003 m. Kerf her kesimde kaybolan malzeme kalınlığı.</div>
+          </div>
+        </div>
+        <div class="btns">
+          <button class="primary" onclick="calc()">Hesapla</button>
+          <!-- MEVCUT ÖRNEKLER (DEĞİŞTİRİLMEDİ) -->
+          <button class="ghost" onclick="fillExample(2500,6,1,30,0)">Örnek 2500 m / 1,30 m</button>
+          <button class="ghost" onclick="fillExample(780,6,2,0,3)">Örnek 780 m / 2,00 m / 3 mm kerf</button>
+          <!-- (SADE) TEST -->
+          <button class="ghost" onclick="fillExample(1200,6,'','',0)">(Sade) 1200 m → kaç boy?</button>
+          <button class="danger" onclick="resetForm()">Sıfırla</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Ondalık için nokta kullanabilirsiniz (örn: 1.25 m). Boş parça ölçüsü = sadece boy adedi hesabı.</div>
+
+        <div class="tests">
+          <div class="section-title" style="margin-bottom:6px">Otomatik Testler</div>
+          <div class="hint">Aşağıdaki testler, (Sade) mod ve paket hesabı için beklenen değerleri doğrular.</div>
+          <div class="btns" style="margin-top:8px">
+            <button class="ghost" onclick="runTests()">Testleri Çalıştır</button>
+          </div>
+          <pre id="testlog">Henüz test çalıştırılmadı.</pre>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="card">
+        <div class="section-title">Özet</div>
+        <div class="results">
+          <div class="stat"><div class="k">Parça uzunluğu</div><div class="v" id="out_piece">—</div></div>
+          <div class="stat"><div class="k">Gereken parça adedi</div><div class="v" id="out_pieces">—</div></div>
+          <div class="stat"><div class="k">Boy başına çıkabilecek parça</div><div class="v" id="out_ppb">—</div></div>
+          <div class="stat"><div class="k">Gereken <span class="emph">boy adedi</span></div><div class="v" id="out_bars">—</div></div>
+          <div class="stat"><div class="k">Gereken <span class="emph">paket adedi</span> <span class="muted">(32 adet/paket)</span></div><div class="v" id="out_packages">—</div></div>
+          <div class="stat"><div class="k">(Sade) Toplam metreye göre <span class="emph">boy adedi</span></div><div class="v" id="out_bars_simple">—</div></div>
+        </div>
+        <table class="table">
+          <thead>
+            <tr><th>Kalem</th><th>Değer</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>(Sade) Toplam metre</td><td id="out_total_simple">—</td></tr>
+            <tr><td>(Sade) Gerekli boy adedi</td><td id="out_bars_simple_row">—</td></tr>
+            <tr><td>Stok boy uzunluğu</td><td id="out_stock">—</td></tr>
+            <tr><td>Tahmini toplam kesim sayısı</td><td id="out_cuts">—</td></tr>
+            <tr><td>Toplam parça uzunluğu</td><td id="out_total_piece_len">—</td></tr>
+            <tr><td>Toplam fire (yaklaşık)</td><td id="out_waste">—</td></tr>
+            <tr><td>Gerekli paket adedi (32 adet/paket)</td><td id="out_packages_row">—</td></tr>
+          </tbody>
+        </table>
+        <div class="footer">
+          <span class="badge">Formül</span>
+          Boy başına parça sayısı <code>n</code> için: <code>n * L + (n - 1) * K ≤ B</code>.<br />
+          Burada L=parça uzunluğu (metre), K=kerf (metre), B=boy uzunluğu (metre). Paket = ⌈Parça adedi / 32⌉.
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
